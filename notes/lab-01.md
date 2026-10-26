@@ -1,6 +1,6 @@
 # Lab 01: Halsted Staff Identities, Licensing, Guests, SSPR and Conditional Access
 
-**Status:** Complete (two checkpoints still missing evidence; see table) · **Date(s):** Oct 23–25, 2026 · **Time spent:** - · **Cost (Cost analysis):** -
+**Status:** Complete (screenshots still pending for 01-04, 01-05, 01-06 and 01-08; see table) · **Date(s):** Oct 23–25, 2026 · **Time spent:** - · **Cost (Cost analysis):** -
 
 Lab guide: [labs/01-identities-and-conditional-access.md](../labs/01-identities-and-conditional-access.md) · Screenshots: `screenshots/lab-01/`
 
