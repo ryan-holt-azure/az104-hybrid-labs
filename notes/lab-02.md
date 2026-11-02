@@ -1,6 +1,6 @@
 # Lab 02: Governance: Management Groups, Policy, Tags, Locks and Costs
 
-**Status:** In progress (Tasks 1–3 done; Task 4 Policy next) · **Date(s):** Oct 26 and Nov 1, 2026– · **Time spent:** - · **Cost (Cost analysis):** -
+**Status:** In progress (Tasks 1–3 done; Task 4a assigned, RG deny test next) · **Date(s):** Oct 26 and Nov 1, 2026– · **Time spent:** - · **Cost (Cost analysis):** -
 
 Lab guide: [labs/02-governance-policy-locks-costs.md](../labs/02-governance-policy-locks-costs.md) · Screenshots: `screenshots/lab-02/`
 
@@ -17,7 +17,7 @@ Lab guide: [labs/02-governance-policy-locks-costs.md](../labs/02-governance-poli
 | 02-01 | The expanded MG tree with your subscription under `mg-hlg-landingzones` | ![Checkpoint 02-01: mg-hlg with landingzones, platform and sandbox; subscription under landingzones](../screenshots/lab-02/02-01-mg-hierarchy.png) | Done |
 | 02-02 | Resource providers filtered to Microsoft.App, plus Usage + quotas | ![Checkpoint 02-02a: subscription renamed to Halsted Logistics - V1, parent MG mg-hlg-landingzones](../screenshots/lab-02/02-02a-subscription-renamed.png) ![Checkpoint 02-02: Microsoft.App registered](../screenshots/lab-02/02-02-subscription-settings.png) | Partial: Usage + quotas still to capture |
 | 02-03 | Resource groups list showing the tag columns | ![Checkpoint 02-03a: 7 resource groups across 4 regions created by one Bash loop](../screenshots/lab-02/02-03a-rgs-created-cli.png) ![Checkpoint 02-03c: a wrapped line split the storage command](../screenshots/lab-02/02-03c-wrapped-line-error.png) ![Checkpoint 02-03b: sandbox RG and storage account created after the fixes](../screenshots/lab-02/02-03b-sandbox-storage-cli.png) ![Checkpoint 02-03: all 8 RGs carry the 5 standard tags](../screenshots/lab-02/02-03-rg-tags.png) ![Checkpoint 02-03d: move sthlgsbx0808 from rg-hlg-sandbox to rg-hlg-mgmt-eus](../screenshots/lab-02/02-03d-move-target.png) ![Checkpoint 02-03e: move validation Succeeded](../screenshots/lab-02/02-03e-move-validation.png) ![Checkpoint 02-03f: storage account during the move](../screenshots/lab-02/02-03f-moved-to-mgmt.png) ![Checkpoint 02-03g: moved back to rg-hlg-sandbox, Activity log shows both moves](../screenshots/lab-02/02-03g-moved-back.png) ![Checkpoint 02-03h: DataClassification=Internal on the storage account (portal, one resource)](../screenshots/lab-02/02-03h-storage-tag.png) ![Checkpoint 02-03i: Region-Owner=IT-Chicago on all 8 rg-hlg-* groups (portal, bulk Assign tags)](../screenshots/lab-02/02-03i-region-owner-bulk.png) ![Checkpoint 02-03j: az tag update --operation Merge adds Purpose without touching the other tags](../screenshots/lab-02/02-03j-tag-merge-cli.png) ![Checkpoint 02-03k: one Bash loop removed Region-Owner from all 8 RGs; sandbox back to the 5 standard tags](../screenshots/lab-02/02-03k-tag-cleanup-cli.png) | Done |
-| 02-04 | (a) the RequestDisallowedByPolicy error, (b) the initiative assignment's compliance page, (c) `rg-hlg-untagged` auto-tagged by Modify | `screenshots/lab-02/02-04-policy-*.png` | Pending |
+| 02-04 | (a) the RequestDisallowedByPolicy error, (b) the initiative assignment's compliance page, (c) `rg-hlg-untagged` auto-tagged by Modify | ![Checkpoint 02-04a: storage account in Brazil South denied by Allowed locations, but the resource group got through](../screenshots/lab-02/02-04a-rg-allowed-storage-denied.png) ![Checkpoint 02-04a: both location policies assigned at mg-hlg (Halsted Logistics)](../screenshots/lab-02/02-04a-policy-assignments.png) | Partial: 4a assigned; rerun the RG test (`rg-hlg-test-brazil2`) to prove the RG policy denies. 4b and 4c to do |
 | 02-05 | The *Access keys* error caused by the ReadOnly lock | `screenshots/lab-02/02-05-readonly-lock.png` | Pending |
 | 02-06 | Both budgets, plus the Advisor configuration page | `screenshots/lab-02/02-06-budgets-advisor.png` | Pending |
 
@@ -53,6 +53,9 @@ for g in $(az group list --query '[?tags."Region-Owner"].name' -o tsv); do az ta
 - **Symptom:** The storage account name came out as `sthlgsbx/bin/bash808`.
   **Cause:** I typed `$0808`. `$` means "insert a variable," and `$0` is the shell's own name (`/bin/bash`).
   **Fix:** Used plain digits (`sthlgsbx0808`) or `$RANDOM`. Storage account names are 3–24 characters, lowercase letters and numbers only, and globally unique.
+- **Symptom:** With *Allowed locations* assigned, the storage account in Brazil South was denied, but `rg-hlg-test-brazil` was created in Brazil South anyway.
+  **Cause:** The built-in *Allowed locations* policy deliberately skips resource groups. I had only assigned that one.
+  **Fix:** Also assigned *Allowed locations for resource groups* at `mg-hlg`. Policies go on a scope (the top management group), not per region or per resource group. The 4 regions are the allowed list.
 
 ## Exam tips in my own words
 -
