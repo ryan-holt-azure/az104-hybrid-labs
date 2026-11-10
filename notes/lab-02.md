@@ -1,6 +1,6 @@
 # Lab 02: Governance: Management Groups, Policy, Tags, Locks and Costs
 
-**Status:** In progress (Tasks 1–3 done; Task 4a assigned, RG deny test next) · **Date(s):** Oct 26 and Nov 1, 2026– · **Time spent:** - · **Cost (Cost analysis):** -
+**Status:** In progress (Tasks 1–3 done; Task 4a enforcement fixed, RG deny retest next) · **Date(s):** Oct 26, Nov 1 and Nov 9, 2026– · **Time spent:** - · **Cost (Cost analysis):** -
 
 Lab guide: [labs/02-governance-policy-locks-costs.md](../labs/02-governance-policy-locks-costs.md) · Screenshots: `screenshots/lab-02/`
 
@@ -15,9 +15,9 @@ Lab guide: [labs/02-governance-policy-locks-costs.md](../labs/02-governance-poli
 | Checkpoint | What it proves | Screenshot | Status |
 |---|---|---|---|
 | 02-01 | The expanded MG tree with your subscription under `mg-hlg-landingzones` | ![Checkpoint 02-01: mg-hlg with landingzones, platform and sandbox; subscription under landingzones](../screenshots/lab-02/02-01-mg-hierarchy.png) | Done |
-| 02-02 | Resource providers filtered to Microsoft.App, plus Usage + quotas | ![Checkpoint 02-02a: subscription renamed to Halsted Logistics - V1, parent MG mg-hlg-landingzones](../screenshots/lab-02/02-02a-subscription-renamed.png) ![Checkpoint 02-02: Microsoft.App registered](../screenshots/lab-02/02-02-subscription-settings.png) | Partial: Usage + quotas still to capture |
+| 02-02 | Resource providers filtered to Microsoft.App, plus Usage + quotas | ![Checkpoint 02-02a: subscription renamed to Halsted Logistics - V1, parent MG mg-hlg-landingzones](../screenshots/lab-02/02-02a-subscription-renamed.png) ![Checkpoint 02-02: Microsoft.App registered](../screenshots/lab-02/02-02-subscription-settings.png) ![Checkpoint 02-02b: Usage + quotas, Compute: per-region vCPU limits by VM family](../screenshots/lab-02/02-02b-usage-quotas.png) | Done |
 | 02-03 | Resource groups list showing the tag columns | ![Checkpoint 02-03a: 7 resource groups across 4 regions created by one Bash loop](../screenshots/lab-02/02-03a-rgs-created-cli.png) ![Checkpoint 02-03c: a wrapped line split the storage command](../screenshots/lab-02/02-03c-wrapped-line-error.png) ![Checkpoint 02-03b: sandbox RG and storage account created after the fixes](../screenshots/lab-02/02-03b-sandbox-storage-cli.png) ![Checkpoint 02-03: all 8 RGs carry the 5 standard tags](../screenshots/lab-02/02-03-rg-tags.png) ![Checkpoint 02-03d: move sthlgsbx0808 from rg-hlg-sandbox to rg-hlg-mgmt-eus](../screenshots/lab-02/02-03d-move-target.png) ![Checkpoint 02-03e: move validation Succeeded](../screenshots/lab-02/02-03e-move-validation.png) ![Checkpoint 02-03f: storage account during the move](../screenshots/lab-02/02-03f-moved-to-mgmt.png) ![Checkpoint 02-03g: moved back to rg-hlg-sandbox, Activity log shows both moves](../screenshots/lab-02/02-03g-moved-back.png) ![Checkpoint 02-03h: DataClassification=Internal on the storage account (portal, one resource)](../screenshots/lab-02/02-03h-storage-tag.png) ![Checkpoint 02-03i: Region-Owner=IT-Chicago on all 8 rg-hlg-* groups (portal, bulk Assign tags)](../screenshots/lab-02/02-03i-region-owner-bulk.png) ![Checkpoint 02-03j: az tag update --operation Merge adds Purpose without touching the other tags](../screenshots/lab-02/02-03j-tag-merge-cli.png) ![Checkpoint 02-03k: one Bash loop removed Region-Owner from all 8 RGs; sandbox back to the 5 standard tags](../screenshots/lab-02/02-03k-tag-cleanup-cli.png) | Done |
-| 02-04 | (a) the RequestDisallowedByPolicy error, (b) the initiative assignment's compliance page, (c) `rg-hlg-untagged` auto-tagged by Modify | ![Checkpoint 02-04a: storage account in Brazil South denied by Allowed locations, but the resource group got through](../screenshots/lab-02/02-04a-rg-allowed-storage-denied.png) ![Checkpoint 02-04a: both location policies assigned at mg-hlg (Halsted Logistics)](../screenshots/lab-02/02-04a-policy-assignments.png) | Partial: 4a assigned; rerun the RG test (`rg-hlg-test-brazil2`) to prove the RG policy denies. 4b and 4c to do |
+| 02-04 | (a) the RequestDisallowedByPolicy error, (b) the initiative assignment's compliance page, (c) `rg-hlg-untagged` auto-tagged by Modify | ![Checkpoint 02-04a: storage account in Brazil South denied by Allowed locations, but the resource group got through](../screenshots/lab-02/02-04a-rg-allowed-storage-denied.png) ![Checkpoint 02-04a: both location policies assigned at mg-hlg (Halsted Logistics)](../screenshots/lab-02/02-04a-policy-assignments.png) ![Checkpoint 02-04a: the RG policy's enforcement mode was Enroll, fixed to Default from the CLI](../screenshots/lab-02/02-04a-enforcement-enroll-fix.png) | Partial: enforcement fixed; rerun the RG test (`rg-hlg-test-brazil3`) to prove the deny. 4b and 4c to do |
 | 02-05 | The *Access keys* error caused by the ReadOnly lock | `screenshots/lab-02/02-05-readonly-lock.png` | Pending |
 | 02-06 | Both budgets, plus the Advisor configuration page | `screenshots/lab-02/02-06-budgets-advisor.png` | Pending |
 
@@ -41,6 +41,17 @@ az tag update --resource-id $ID --operation Delete --tags Purpose=experiments
 # Find every RG with a tag, then strip it from all of them in one loop
 az group list --query '[?tags."Region-Owner"].name' -o tsv
 for g in $(az group list --query '[?tags."Region-Owner"].name' -o tsv); do az tag update --resource-id $(az group show -n $g --query id -o tsv) --operation Delete --tags Region-Owner=IT-Chicago -o none; echo "cleared $g"; done
+
+# Inspect policy assignments at the MG where they were made (searching from the subscription returned [])
+MG=/providers/Microsoft.Management/managementGroups/mg-hlg
+az policy assignment list --scope $MG --query "[].{name:displayName, enforcement:enforcementMode, definition:policyDefinitionId, locations:parameters.listOfAllowedLocations.value}" -o jsonc
+
+# Which MG is the subscription under?
+az account management-group entities list --query "[?type=='/subscriptions'].{sub:displayName, parent:parent.id}" -o table
+
+# Turn enforcement on (the CLI needs the assignment's internal name, not its display name)
+N=$(az policy assignment list --scope $MG --query "[?displayName=='HLG - Allowed locations for RGs'].name" -o tsv)
+az policy assignment update --name $N --scope $MG --enforcement-mode Default
 ```
 
 ## What broke and how I fixed it
@@ -56,6 +67,9 @@ for g in $(az group list --query '[?tags."Region-Owner"].name' -o tsv); do az ta
 - **Symptom:** With *Allowed locations* assigned, the storage account in Brazil South was denied, but `rg-hlg-test-brazil` was created in Brazil South anyway.
   **Cause:** The built-in *Allowed locations* policy deliberately skips resource groups. I had only assigned that one.
   **Fix:** Also assigned *Allowed locations for resource groups* at `mg-hlg`. Policies go on a scope (the top management group), not per region or per resource group. The 4 regions are the allowed list.
+- **Symptom:** With both policies assigned at `mg-hlg` for a day, `rg-hlg-test-brazil2` (Brazil South) was still created.
+  **Cause:** The RG policy's enforcement mode was `Enroll` (a preview option on the Basics tab), not `Default`. The definition, scope and regions were all correct. Listing assignments from the subscription with `--disable-scope-strict-match` returned `[]`. Querying the MG with `--scope` showed the setting.
+  **Fix:** `az policy assignment update --enforcement-mode Default`. Lesson: when a policy is assigned but doesn't block, check enforcement mode first. Disabled (DoNotEnforce) still evaluates and reports, but denies nothing.
 
 ## Exam tips in my own words
 -
